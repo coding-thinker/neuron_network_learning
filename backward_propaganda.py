@@ -11,21 +11,17 @@ class DataError(Exception):
 
 
 def non_linear(data):
-    if type(data) == np.ndarray:
-        return (data > 0) * data
-    else:
-        return max([data, 0])
-
+    return np.exp(data)/(np.exp(data) + 1)
+    
 
 def d_non_linear(data):
-    if type(data) == np.ndarray:
-        return (data > 0) * 1
+    return non_linear(data) * (1 - non_linear(data))
 
 
 def inserting(n):
     temp = [0 for i in range(10)]
     temp[n] = 1
-    return
+    return temp
 
 
 def loss(expection, data, type_=0):
@@ -47,9 +43,12 @@ def get_data():
 class Layer:
     def __init__(self, node_num, front_num):
         self.node_num = node_num
-        self.w = np.ones((node_num, front_num))
-        self.b = np.ones((node_num, 1))
+        self.w = np.zeros((node_num, front_num))
+        self.b = np.zeros((node_num, 1))
         self.type = 0
+
+    def set_learning_rate(self, lr):
+        self.learning_rate = lr
 
     def set_input_type(self):
         self.type = -1
@@ -73,12 +72,15 @@ class Layer:
             raise ConnectError('First layer cannot front connect anything')
 
     def forward_prop(self):
-        a = self.front_layer.output
-        self.output = np.dot(self.w, a) + self.b
+        self.a = self.front_layer.output
+        self.z = np.dot(self.w, self.a) + self.b
+        self.output = non_linear(self.z)
 
     def front_feed(self, data):
         if self.type == -1:
-            self.output = np.dot(self.w, data) + self.b
+            self.a = data
+            self.z = np.dot(self.w, self.a) + self.b
+            self.output = non_linear(self.z)
         else:
             raise DataError('Only first layer can front feed')
 
@@ -90,9 +92,22 @@ class Layer:
 
     def back_feed(self, data):
         if self.type == 1:
-            pass
+            t = (self.output - data)
+            self.passing_delta = (self.output - data) * d_non_linear(self.z)
+            self.gradient_w = np.dot(self.passing_delta, self.a.T)
+            self.gradient_b = self.passing_delta.copy()
         else:
             raise DataError('Only last layer can back feed')
+
+    def backward_prop(self):
+        iterative_loss = self.back_layer.passing_delta
+        self.passing_delta = np.dot(self.back_layer.w.T, iterative_loss) * d_non_linear(self.z)
+        self.gradient_w = np.dot(self.passing_delta, self.a.T)
+        self.gradient_b = self.passing_delta.copy()
+
+    def update(self):
+        self.w -= self.gradient_w * self.learning_rate
+        self.b -= self.gradient_b * self.learning_rate
 
 
 class BP:
@@ -103,10 +118,14 @@ class BP:
             temp = Layer(node_nums[i], node_nums[i - 1])
             if i == 1:
                 temp.set_input_type()
-            elif i == len(node_nums):
+            elif i == len(node_nums) - 1:
                 temp.set_output_type()
             self.layers.append(temp)
             self.connect()
+
+    def set_learning_rate(self, lr):
+        for each in self.layers:
+            each.set_learning_rate(lr)
 
     def connect(self):
         for i in range(0, len(self.layers) - 1):
@@ -124,15 +143,81 @@ class BP:
     def get_expection(self):
         return self.layers[-1].get_expection()
 
+    def predict(self,data):
+        self.forward_prop(data)
+        return self.layers[-1].get_expection()
+
     def get_loss(self, data):
         lossing = loss(self.get_expection(), data)
         return lossing
 
     def backward_prop(self, data):
-        pass
+        for i in range(len(self.layers) - 1, -1, -1):
+            if i == len(self.layers) - 1:
+                self.layers[i].back_feed(data)
+            else:
+                self.layers[i].backward_prop()
+        for each in self.layers:
+            each.update()
+
+    def train(self, x_data, y_data, rounds=1):
+        for _ in range(rounds):
+            self.forward_prop(x_data)
+            self.backward_prop(y_data)
+        return self.get_loss(y_data)
 
 
-a = get_data()
-b = a[0][0].reshape((28 * 28, 1))
-l = BP((784, 16, 10))
-l.forward_prop(b)
+def main():
+    a = get_data()
+    l = BP((784, 16, 10))
+    l.set_learning_rate(0.01)
+    for i in range(2500):
+        b = a[0][i].reshape((28 * 28, 1))
+        c = a[1][i].reshape((10, 1))
+        l.train(b, c, 1000)
+        if i % 100 == 0:
+            print(str(i/25000*100) + '\t' + str(l.get_loss(c).sum()))
+            nn = input()
+            if nn != '':
+                break
+    m,n = 0,0
+    with open('model.pkl','wb') as f:
+        pickle.dump(l,f)
+    for i in range(500):
+        b = a[0][i].reshape((28 * 28, 1))
+        c = a[1][i].reshape((10, 1))
+        ans = l.predict(b).reshape(10).tolist()
+        ans = ans.index(max(ans))
+        c = c.reshape(10).tolist().index(1)
+        if ans == c:
+            m += 1
+        else:
+            n += 1
+        print(ans, '\t', c)
+    print('\n%d----%d'%(m,n))
+    import os
+    os.system('pause')
+
+
+
+def test():
+    n,m = 0,0
+    with open('model.pkl','rb') as f:
+        l = pickle.load(f)
+    a = get_data()
+    for i in range(25000, 30000):
+        b = a[0][i].reshape((28 * 28, 1))
+        c = a[1][i].reshape((10, 1))
+        ans = l.predict(b).reshape(10).tolist()
+        ans = ans.index(max(ans))
+        c = c.reshape(10).tolist().index(1)
+        if ans == c:
+            m += 1
+        else:
+            n += 1
+        print(ans, '\t', c)
+    print('\n%d----%d'%(m,n))
+    import os
+    os.system('pause')
+
+main()
