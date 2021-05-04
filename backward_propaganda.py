@@ -33,7 +33,7 @@ def loss(expection, data, type_=0):
 
 
 def get_data():
-    with open('mnist.pkl', 'rb') as f:
+    with open('MLNG/mnist.pkl', 'rb') as f:
         data_set = pickle.load(f, encoding='iso-8859-1')
     data_train_list = [data_set[0][0][i].reshape((28, 28)).copy() for i in range(50000)]
     label_train_list = [np.array(inserting(j)) for j in data_set[0][1]]

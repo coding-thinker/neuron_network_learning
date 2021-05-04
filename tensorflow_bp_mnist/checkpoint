@@ -1,2 +1,0 @@
-model_checkpoint_path: "tensorflow_bp_mnist_model.ckpt"
-all_model_checkpoint_paths: "tensorflow_bp_mnist_model.ckpt"
