@@ -1,2 +1,5 @@
 *.pkl
+*.pyc
 /.idea
+*.gz.pkl.gz
+**/mlruns
