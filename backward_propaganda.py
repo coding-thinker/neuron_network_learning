@@ -177,9 +177,9 @@ def main():
         l.train(b, c, 1000)
         if i % 100 == 0:
             print(str(i/25000*100) + '\t' + str(l.get_loss(c).sum()))
-            nn = input()
-            if nn != '':
-                break
+            # nn = input()
+            # if nn != '':
+            #     break
     m,n = 0,0
     with open('model.pkl','wb') as f:
         pickle.dump(l,f)

@@ -7,25 +7,27 @@ import mlflow
 
 
 def load_mnist():
+    def one_hotify(y):
+        return np.eye(10)[y].reshape(10, 1)
     # Load data
     with gzip.open(os.path.join(os.curdir, "data", "mnist.pkl.gz"), "rb") as data_file:
         train_data, val_data, test_data = pickle.load(data_file, encoding="latin1")
+    target_shape = (784, 1)
 
-    train_inputs = [np.reshape(x, (784, 1)) for x in train_data[0]]
+    train_inputs = [x.reshape(target_shape) for x in train_data[0]]
     train_results = [one_hotify(y) for y in train_data[1]]
     train_data = list(zip(train_inputs, train_results))
 
-    val_inputs = [np.reshape(x, (784, 1)) for x in val_data[0]]
+    val_inputs = [x.reshape(target_shape) for x in val_data[0]]
     val_results = val_data[1]
     val_data = list(zip(val_inputs, val_results))
 
-    test_inputs = [np.reshape(x, (784, 1)) for x in test_data[0]]
+    test_inputs = [x.reshape(target_shape) for x in test_data[0]]
     test_data = list(zip(test_inputs, test_data[1]))
     return train_data, val_data, test_data
 
 
-def one_hotify(y):
-    return np.eye(10)[y].reshape(10, 1)
+
 
 
 if __name__ == "__main__":
@@ -78,7 +80,7 @@ if __name__ == "__main__":
     mlp = MLP(
         nodes_per_layer=num_neurons, 
         lr=lr, 
-        batch_size=batch_size, 
+        bs=batch_size, 
         activation=activation,  
     )
     mlp.train(train_set, dev_set, epochs)
